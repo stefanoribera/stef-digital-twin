@@ -1,0 +1,14 @@
+# Environments & Secrets
+.env
+
+# Database Backups
+*.dump
+*.sql
+
+# Python Artifacts
+__pycache__/
+*.pyc
+.uv/
+
+# OS Artifacts
+.DS_Store

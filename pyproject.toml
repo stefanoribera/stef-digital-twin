@@ -1,0 +1,29 @@
+[project]
+name = "stef-digital-twin-core"
+version = "1.0.0"
+description = "EOSC Digital Twin Infrastructure"
+requires-python = "~=3.14.0"
+dependencies = [
+    # --- High-Performance Processing (Rust-backed) ---
+    "polars>=1.20.0",
+    "pydantic>=2.10.0",
+
+    # --- Async & Database Driver ---
+    "psycopg[binary]>=3.2.0",
+    "psycopg-pool>=3.2.0",
+    "sqlalchemy>=2.0.0",
+    "pgvector>=0.3.6",	
+	
+    # --- Infrastructure & Utilities ---
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "redis>=5.2.0",
+    "streamlit>=1.40.0",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,7 @@
+ingest.py
+pyproject.toml
+stef_digital_twin_core.egg-info/PKG-INFO
+stef_digital_twin_core.egg-info/SOURCES.txt
+stef_digital_twin_core.egg-info/dependency_links.txt
+stef_digital_twin_core.egg-info/requires.txt
+stef_digital_twin_core.egg-info/top_level.txt

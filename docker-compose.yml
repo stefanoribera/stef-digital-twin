@@ -1,0 +1,55 @@
+services:
+  # --- MODULE 1: POSTGRESQL (Time-Series & Vector DB) ---
+  stef-db:
+    image: pgvector/pgvector:pg18
+    container_name: stef-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT_EXT:-5440}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "synchronous_commit=off"       # High-throughput ingestion tuning
+      - "-c"
+      - "shared_buffers=2GB"            # Dedicated RAM for DB cache
+      - "-c"
+      - "work_mem=64MB"
+      - "-c"
+      - "maintenance_work_mem=1GB"
+      - "-c"
+      - "checkpoint_timeout=15min"
+      - "-c"
+      - "max_wal_size=4GB"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- MODULE 2: PYTHON COMPUTATIONAL ENGINE ---
+  stef-engine:
+    build: .
+    container_name: stef-engine
+    restart: unless-stopped
+    depends_on:
+      stef-db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: tail -f /dev/null
+    environment:
+      - POLARS_MAX_THREADS=10
+
+volumes:
+  pgdata:
