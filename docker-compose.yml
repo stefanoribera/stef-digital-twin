@@ -47,9 +47,42 @@ services:
       - .env
     volumes:
       - .:/app
-    command: tail -f /dev/null
+    # >>> CHANGE THIS LINE <<<
+    command: uv run uvicorn src.api:app --host 0.0.0.0 --port 8000 
     environment:
       - POLARS_MAX_THREADS=10
+
+# --- MODULE 3.1: SECURE MESSAGE BROKER ---
+  stef-redis:
+    image: redis:7.2-alpine
+    container_name: stef-redis
+    restart: unless-stopped
+    # NOTICE: No ports mapped to host. 100% isolated within Docker DNS.
+
+# --- MODULE 3.3 & 3.4: ASYNC PHYSICS WORKER ---
+  stef-worker:
+    build: .
+    container_name: stef-worker
+    restart: unless-stopped
+    depends_on:
+      stef-db:
+        condition: service_healthy
+      stef-redis:
+        condition: service_started
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    # Run the worker script continuously
+    command: uv run python src/worker.py
+    environment:
+      # Tell Polars Rust backend to obey the Docker CPU limits
+      - POLARS_MAX_THREADS=2
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: '2G'
 
 volumes:
   pgdata:

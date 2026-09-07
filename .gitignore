@@ -12,3 +12,5 @@ __pycache__/
 
 # OS Artifacts
 .DS_Store
+data/
+*.egg-info/

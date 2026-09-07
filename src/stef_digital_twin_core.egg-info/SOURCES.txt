@@ -1,6 +1,0 @@
-pyproject.toml
-src/stef_digital_twin_core.egg-info/PKG-INFO
-src/stef_digital_twin_core.egg-info/SOURCES.txt
-src/stef_digital_twin_core.egg-info/dependency_links.txt
-src/stef_digital_twin_core.egg-info/requires.txt
-src/stef_digital_twin_core.egg-info/top_level.txt

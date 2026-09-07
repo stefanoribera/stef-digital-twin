@@ -7,19 +7,18 @@ dependencies = [
     # --- High-Performance Processing (Rust-backed) ---
     "polars>=1.20.0",
     "pydantic>=2.10.0",
-
     # --- Async & Database Driver ---
     "psycopg[binary]>=3.2.0",
     "psycopg-pool>=3.2.0",
     "sqlalchemy>=2.0.0",
-    "pgvector>=0.3.6",	
-	
+    "pgvector>=0.3.6",
     # --- Infrastructure & Utilities ---
     "python-dotenv>=1.0.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
     "redis>=5.2.0",
     "streamlit>=1.40.0",
+    "httpx>=0.28.1",
 ]
 
 [build-system]
