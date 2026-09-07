@@ -59,7 +59,7 @@ docker compose up -d stef-db stef-redis stef-api stef-worker
 # 3. Monitor the compute workers
 docker compose logs -f stef-worker
 
-🗺️ Future Architectural Enhancements
+## 🗺️ Future Architectural Enhancements
 
     [ ] Memory Optimization: Implement Zero-Copy memory architecture using Apache Arrow and ADBC (adbc_driver_postgresql) to eliminate Python object overhead during database ingestion.
 
