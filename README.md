@@ -58,15 +58,13 @@ docker compose up -d stef-db stef-redis stef-api stef-worker
 
 # 3. Monitor the compute workers
 docker compose logs -f stef-worker
+```
 
 ## 🗺️ Future Architectural Enhancements
+- [ ] **Memory Optimization:** Implement Zero-Copy memory architecture using Apache Arrow and ADBC (`adbc_driver_postgresql`) to eliminate Python object overhead during database ingestion.
+- [ ] **Observability:** Deploy an isolated Presentation Layer (Streamlit) communicating strictly via REST to visualize real-time particle resonances.
+- [ ] **Quality Assurance:** Implement CI/CD Quality Gates (Pytest, strict 70% coverage threshold) to fulfill automated deployment requirements.
+- [ ] **Grid Readiness:** Prepare the container ecosystem for rootless execution (`udocker`) to comply with European supercomputer security policies.
 
-    [ ] Memory Optimization: Implement Zero-Copy memory architecture using Apache Arrow and ADBC (adbc_driver_postgresql) to eliminate Python object overhead during database ingestion.
-
-    [ ] Observability: Deploy an isolated Presentation Layer (Streamlit) communicating strictly via REST to visualize real-time particle resonances.
-
-    [ ] Quality Assurance: Implement CI/CD Quality Gates (Pytest, strict 70% coverage threshold) to fulfill automated deployment requirements.
-
-    [ ] Grid Readiness: Prepare the container ecosystem for rootless execution (udocker) to comply with European supercomputer security policies.
-
-Engineered as a technical artifact for EOSC infrastructure integration and evaluation.
+---
+*Engineered as a technical artifact for EOSC infrastructure integration and evaluation.*
