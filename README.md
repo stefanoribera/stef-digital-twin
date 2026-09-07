@@ -12,7 +12,7 @@ The architecture is strictly aligned with the **European Open Science Cloud (EOS
 *   **D3.1 (Software Quality):** Containerized, decoupled microservices with graceful degradation.
 *   **D3.3 (FAIR Data Principles):** Implementation of JSON-LD metadata for machine-actionable interoperability.
 
-## 🏗️ System Architecture (Phase 3)
+## 🏗️ System Architecture
 
 The system implements an event-driven, asynchronous microservice architecture to prevent I/O blocking during high-velocity data ingestion.
 
@@ -50,7 +50,7 @@ This pipeline is engineered for resilience in HPC/Grid environments:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/eosc-digital-twin-poc.git
+git clone [https://github.com/yourusername/eosc-digital-twin-poc.git](https://github.com/yourusername/eosc-digital-twin-poc.git)
 cd eosc-digital-twin-poc
 
 # 2. Spin up the infrastructure (Detached mode)
@@ -58,12 +58,15 @@ docker compose up -d stef-db stef-redis stef-api stef-worker
 
 # 3. Monitor the compute workers
 docker compose logs -f stef-worker
-```
 
-## 🗺️ Roadmap (Phase 4 & 5)
-- [ ] **Phase 4:** Implement Zero-Copy memory architecture using Apache Arrow and ADBC (`adbc_driver_postgresql`) to eliminate Python object overhead.
-- [ ] **Phase 4:** Deploy isolated Presentation Layer (Streamlit) for real-time observability.
-- [ ] **Phase 5:** Implement CI/CD Quality Gates (Pytest, 70% coverage threshold) and prepare for rootless execution (`udocker`).
+🗺️ Future Architectural Enhancements
 
----
-*Developed as a technical preparation artifact for EOSC infrastructure integration.*
+    [ ] Memory Optimization: Implement Zero-Copy memory architecture using Apache Arrow and ADBC (adbc_driver_postgresql) to eliminate Python object overhead during database ingestion.
+
+    [ ] Observability: Deploy an isolated Presentation Layer (Streamlit) communicating strictly via REST to visualize real-time particle resonances.
+
+    [ ] Quality Assurance: Implement CI/CD Quality Gates (Pytest, strict 70% coverage threshold) to fulfill automated deployment requirements.
+
+    [ ] Grid Readiness: Prepare the container ecosystem for rootless execution (udocker) to comply with European supercomputer security policies.
+
+Engineered as a technical artifact for EOSC infrastructure integration and evaluation.
