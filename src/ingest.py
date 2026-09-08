@@ -1,18 +1,11 @@
-import os
 import time
 import polars as pl
 import numpy as np
 import psycopg
 from datetime import datetime, timedelta
 
-# 1. Configuration & Secrets
-DB_USER = os.getenv("POSTGRES_USER", "stef_admin")
-DB_PASS = os.getenv("POSTGRES_PASSWORD", "stef_secure_password_2026")
-DB_NAME = os.getenv("POSTGRES_DB", "synchrotron_telemetry")
-DB_HOST = "stef-db" # Resolves automatically via Docker internal DNS
-DB_PORT = "5432"
+from src.config import CONN_STR  # credenciales sin defaults, ver src/config.py
 
-CONN_STR = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 def setup_database():
     """Creates the telemetry table if it doesn't exist."""
@@ -29,6 +22,14 @@ def setup_database():
             """)
             # Create an index on timestamp for fast time-series queries
             cur.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_time ON telemetry(timestamp);")
+            # Indice compuesto para GET /telemetry/{sensor_id}, que filtra por
+            # sensor_id y ordena por timestamp. Sin el, pedir un sensor sin
+            # filas obliga a recorrer el millon entero para demostrar que no
+            # hay resultados: amplificacion de DoS sin autenticar.
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_telemetry_sensor_time "
+                "ON telemetry(sensor_id, timestamp DESC);"
+            )
         conn.commit()
 
 def generate_telemetry(num_rows: int = 1_000_000) -> pl.DataFrame:

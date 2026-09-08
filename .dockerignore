@@ -1,0 +1,25 @@
+# Secretos: sin este archivo, `COPY . .` hornea el .env dentro de la imagen
+.env
+*.env
+!.env.example
+
+# Historia de git (contiene el password que hay que rotar)
+.git
+.gitignore
+
+# Datos y backups
+data/
+*.dump
+*.sql
+
+# Artefactos Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+.uv/
+
+# Varios
+.DS_Store
+README.md

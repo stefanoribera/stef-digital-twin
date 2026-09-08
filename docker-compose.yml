@@ -5,18 +5,26 @@ services:
     container_name: stef-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      # ":?" hace que compose se niegue a arrancar si la variable falta.
+      POSTGRES_USER: ${POSTGRES_USER:?falta POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:?falta POSTGRES_DB en .env}
       PGDATA: /var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT_EXT:-5440}:5432"
+      # Publicado SOLO en loopback. Antes era 0.0.0.0:5440 -> la base quedaba
+      # expuesta a la red, y las reglas DNAT de Docker saltan por encima de ufw.
+      - "127.0.0.1:${POSTGRES_PORT_EXT:-5440}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
     command:
       - "postgres"
+      # synchronous_commit=off admite perder transacciones ya confirmadas si el
+      # proceso cae. Incompatible con el "zero data corruption" del README:
+      # dejalo en "on" salvo que la perdida sea aceptable a proposito.
       - "-c"
-      - "synchronous_commit=off"       # High-throughput ingestion tuning
+      - "synchronous_commit=on"
       - "-c"
       - "shared_buffers=2GB"            # Dedicated RAM for DB cache
       - "-c"
@@ -27,11 +35,17 @@ services:
       - "checkpoint_timeout=15min"
       - "-c"
       - "max_wal_size=4GB"
+      - "-c"
+      - "max_connections=50"            # 50 x work_mem 64MB = techo acotado
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: '6G'
 
   # --- MODULE 2: PYTHON COMPUTATIONAL ENGINE ---
   stef-engine:
@@ -41,16 +55,31 @@ services:
     depends_on:
       stef-db:
         condition: service_healthy
+      stef-redis:
+        condition: service_healthy
     ports:
-      - "8000:8000"
+      # La API exige X-API-Key, pero seguir publicandola en 0.0.0.0 la deja
+      # accesible desde toda la red. En local, dejala en loopback.
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
     volumes:
-      - .:/app
-    # >>> CHANGE THIS LINE <<<
-    command: uv run uvicorn src.api:app --host 0.0.0.0 --port 8000 
+      # Solo lectura: el proceso no escribe en /app y asi no hay primitiva de
+      # escritura sobre el repo del host desde el contenedor.
+      - .:/app:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Sin `uv run`: el venv ya esta en PATH, y uv necesitaria escribir en /app.
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000
     environment:
       - POLARS_MAX_THREADS=10
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: '2G'
 
 # --- MODULE 3.1: SECURE MESSAGE BROKER ---
   stef-redis:
@@ -58,6 +87,35 @@ services:
     container_name: stef-redis
     restart: unless-stopped
     # NOTICE: No ports mapped to host. 100% isolated within Docker DNS.
+    # Aun asi lleva password: la red por defecto de compose no es una frontera
+    # de seguridad, y sin maxmemory la cola crece hasta tumbar el host.
+    command:
+      - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:?falta REDIS_PASSWORD en .env}"
+      - "--maxmemory"
+      - "512mb"
+      - "--maxmemory-policy"
+      - "noeviction"
+      - "--save"
+      - ""
+      - "--appendonly"
+      - "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?falta REDIS_PASSWORD en .env}
+    deploy:
+      resources:
+        limits:
+          memory: '768M'
 
 # --- MODULE 3.3 & 3.4: ASYNC PHYSICS WORKER ---
   stef-worker:
@@ -68,13 +126,17 @@ services:
       stef-db:
         condition: service_healthy
       stef-redis:
-        condition: service_started
+        condition: service_healthy
     env_file:
       - .env
     volumes:
-      - .:/app
+      - .:/app:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     # Run the worker script continuously
-    command: uv run python src/worker.py
+    command: python -m src.worker
     environment:
       # Tell Polars Rust backend to obey the Docker CPU limits
       - POLARS_MAX_THREADS=2

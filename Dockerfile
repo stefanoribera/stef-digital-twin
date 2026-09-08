@@ -3,8 +3,10 @@
 # ==============================================================================
 FROM python:3.14-slim AS builder
 
-# Inject official Astral 'uv' binary
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# uv fijado por version: `:latest` hace el build irreproducible y mete en la
+# imagen lo que sea que Astral publique ese dia (riesgo de cadena de suministro).
+ARG UV_VERSION=0.12.10
+COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
 
 # Force C++ driver to prevent linker errors on missing C++ symbols in wheel builds
 ENV PYTHONUNBUFFERED=1 \
@@ -24,15 +26,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-RUN uv sync --no-install-project --no-dev
+# uv.lock TIENE que entrar al build: sin el, `uv sync` reresuelve desde cero y
+# las dependencias (todas con >=) se instalan en la version mas nueva que haya
+# ese dia, lockfile ignorado. --locked falla si el lock esta desincronizado.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-install-project --no-dev
 
 # ==============================================================================
 # Stage 2: Runtime (Production Lightweight Image)
 # ==============================================================================
 FROM python:3.14-slim
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ARG UV_VERSION=0.12.10
+COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
     UV_PROJECT_ENVIRONMENT="/opt/venv" \
@@ -48,8 +54,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client-18 && \
     rm -rf /var/lib/apt/lists/*
 
+# Usuario sin privilegios. Antes todo corria como root, y con `.:/app` montado
+# eso da escritura como root sobre el repo del host.
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser
+
 # Copy virtual environment from Stage 1
 COPY --from=builder /opt/venv /opt/venv
-COPY . .
+# `COPY . .` depende de .dockerignore para no hornear .env, .git y data/
+COPY --chown=appuser:appuser . .
+
+USER appuser
 
 CMD ["tail", "-f", "/dev/null"]
