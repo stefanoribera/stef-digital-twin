@@ -5,8 +5,8 @@ FROM python:3.14-slim AS builder
 
 # uv fijado por version: `:latest` hace el build irreproducible y mete en la
 # imagen lo que sea que Astral publique ese dia (riesgo de cadena de suministro).
-ARG UV_VERSION=0.12.10
-COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
+
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
 
 # Force C++ driver to prevent linker errors on missing C++ symbols in wheel builds
 ENV PYTHONUNBUFFERED=1 \
@@ -37,8 +37,7 @@ RUN uv sync --locked --no-install-project --no-dev
 # ==============================================================================
 FROM python:3.14-slim
 
-ARG UV_VERSION=0.12.10
-COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
     UV_PROJECT_ENVIRONMENT="/opt/venv" \
