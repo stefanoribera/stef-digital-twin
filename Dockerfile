@@ -1,67 +1,56 @@
 # ==============================================================================
-# Stage 1: Builder (C-extension Compilation)
+# Stage 1: Component-Aware Builder
 # ==============================================================================
 FROM python:3.14-slim AS builder
 
-# uv fijado por version: `:latest` hace el build irreproducible y mete en la
-# imagen lo que sea que Astral publique ese dia (riesgo de cadena de suministro).
+ARG UV_VERSION=0.12.10
+COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
 
-COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
-
-# Force C++ driver to prevent linker errors on missing C++ symbols in wheel builds
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT="/opt/venv" \
-    CC="g++" \
-    CXX="g++"
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
-WORKDIR /app
-
-# Install build tools for PostgreSQL C-extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    gcc \
     libpq-dev \
     python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# uv.lock TIENE que entrar al build: sin el, `uv sync` reresuelve desde cero y
-# las dependencias (todas con >=) se instalan en la version mas nueva que haya
-# ese dia, lockfile ignorado. --locked falla si el lock esta desincronizado.
+# Require the deployment orchestrator to specify the architectural component
+ARG COMPONENT
+RUN if [ -z "$COMPONENT" ]; then echo "ERROR: COMPONENT build arg is required (api, compute, or ui)" && exit 1; fi
+
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-install-project --no-dev
+
+# Compile ONLY the universal base dependencies AND the specific target component
+RUN uv sync --locked --no-install-project --no-dev --extra ${COMPONENT}
 
 # ==============================================================================
 # Stage 2: Runtime (Production Lightweight Image)
 # ==============================================================================
 FROM python:3.14-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
+ARG UV_VERSION=0.12.10
+COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
     UV_PROJECT_ENVIRONMENT="/opt/venv" \
     PATH="/opt/venv/bin:$PATH"
 
-WORKDIR /app
-
-# Install PostgreSQL 18 client utilities for native backups
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates gnupg libpq5 postgresql-common && \
-    /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y && \
-    apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
     postgresql-client-18 && \
     rm -rf /var/lib/apt/lists/*
 
-# Usuario sin privilegios. Antes todo corria como root, y con `.:/app` montado
-# eso da escritura como root sobre el repo del host.
+# Enforce EGI rootless execution standard
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser
 
-# Copy virtual environment from Stage 1
+# Extract the isolated environment from the builder stage
 COPY --from=builder /opt/venv /opt/venv
-# `COPY . .` depende de .dockerignore para no hornear .env, .git y data/
 COPY --chown=appuser:appuser . .
 
 USER appuser
 
 CMD ["tail", "-f", "/dev/null"]
+
