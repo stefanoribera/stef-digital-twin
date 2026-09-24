@@ -9,13 +9,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Tier-0 Gateway: Needs the async broker, server, and ADBC Arrow streaming logic.
+# Tier-0 Gateway: Needs the async broker, server, ADBC Arrow streaming, AND psycopg for telemetry.
 api = [
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
     "redis>=5.2.0",
     "adbc-driver-postgresql>=1.0.0",
     "pyarrow>=17.0.0",
+    "psycopg[binary]>=3.2.0",
+    "psycopg-pool>=3.2.0",
 ]
 # Tier-2 Compute: Needs the async queue, math engine, and high-throughput transactional DB writer.
 compute = [

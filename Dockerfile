@@ -3,8 +3,7 @@
 # ==============================================================================
 FROM python:3.14-slim AS builder
 
-ARG UV_VERSION=0.12.10
-COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
     UV_PROJECT_ENVIRONMENT="/opt/venv" \
@@ -31,16 +30,14 @@ RUN uv sync --locked --no-install-project --no-dev --extra ${COMPONENT}
 # ==============================================================================
 FROM python:3.14-slim
 
-ARG UV_VERSION=0.12.10
-COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
     UV_PROJECT_ENVIRONMENT="/opt/venv" \
     PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    postgresql-client-18 && \
+    libpq5 && \
     rm -rf /var/lib/apt/lists/*
 
 # Enforce EGI rootless execution standard

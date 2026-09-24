@@ -1,0 +1,28 @@
+services:
+  stef-ui:
+    build:
+      context: .
+      args:
+        COMPONENT: ui
+    container_name: stef-ui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - .:/app:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - stef_net
+    command: streamlit run src/ui.py --server.port=8501 --server.address=0.0.0.0
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: '1G'
+
+networks:
+  stef_net:
+    external: true

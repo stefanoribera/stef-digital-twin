@@ -1,0 +1,29 @@
+services:
+  stef-worker:
+    build:
+      context: .
+      args:
+        COMPONENT: compute
+    container_name: stef-worker
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - .:/app:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - stef_net
+    shm_size: '2gb'
+    environment:
+      - POLARS_MAX_THREADS=2
+    command: python -m src.worker
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: '4G'
+networks:
+  stef_net:
+    external: true

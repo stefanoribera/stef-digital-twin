@@ -1,0 +1,28 @@
+services:
+  stef-api:
+    build:
+      context: .
+      args:
+        COMPONENT: api
+    container_name: stef-api
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - .:/app:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - stef_net
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: '2G'
+networks:
+  stef_net:
+    external: true

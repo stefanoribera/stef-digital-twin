@@ -809,6 +809,8 @@ dependencies = [
 api = [
     { name = "adbc-driver-postgresql" },
     { name = "fastapi" },
+    { name = "psycopg", extra = ["binary"] },
+    { name = "psycopg-pool" },
     { name = "pyarrow" },
     { name = "redis" },
     { name = "uvicorn" },
@@ -835,7 +837,9 @@ requires-dist = [
     { name = "plotly", marker = "extra == 'ui'", specifier = ">=5.20.0" },
     { name = "polars", marker = "extra == 'compute'", specifier = ">=1.20.0" },
     { name = "polars", marker = "extra == 'ui'", specifier = ">=1.20.0" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'api'", specifier = ">=3.2.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'compute'", specifier = ">=3.2.0" },
+    { name = "psycopg-pool", marker = "extra == 'api'", specifier = ">=3.2.0" },
     { name = "psycopg-pool", marker = "extra == 'compute'", specifier = ">=3.2.0" },
     { name = "pyarrow", marker = "extra == 'api'", specifier = ">=17.0.0" },
     { name = "pyarrow", marker = "extra == 'ui'", specifier = ">=17.0.0" },

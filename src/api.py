@@ -1,5 +1,8 @@
 import secrets
 
+import adbc_driver_postgresql.dbapi as adbc
+import pyarrow as pa
+from fastapi import Response
 import redis.asyncio as redis
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Path, Request, Security, status
@@ -223,3 +226,31 @@ async def get_telemetry(sensor_id: int = Path(ge=1, le=100)):
             } for r in records
         ]
     }
+
+@app.get("/physics/z-bosons", summary="Zero-Copy Z-Boson Resonances (Arrow IPC)")
+def get_z_bosons():
+    """
+    Tier-4 Egress: Streams raw Apache Arrow IPC memory.
+    NOTICE: This is a synchronous 'def', NOT 'async def'.
+    ADBC bindings are C-blocking. FastAPI will automatically route this
+    to a separate threadpool to prevent starving the ASGI event loop.
+    """
+    try:
+        # Establish the C-level ADBC connection
+        with adbc.connect(CONN_STR) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT invariant_mass FROM physics_events WHERE is_z_boson = true")
+                arrow_table = cur.fetch_arrow_table()
+
+        # Serialize table directly to an Arrow IPC binary stream (Zero-Copy)
+        sink = pa.BufferOutputStream()
+        with pa.ipc.new_stream(sink, arrow_table.schema) as writer:
+            writer.write_table(arrow_table)
+
+        # Blast the raw bytes over the TCP socket
+        return Response(
+            content=sink.getvalue().to_pybytes(),
+            media_type="application/vnd.apache.arrow.stream"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ADBC Streaming Failure: {str(e)}")
