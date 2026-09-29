@@ -1,3 +1,4 @@
+from src.physics_inference_engine import PhysicsOracle
 import secrets
 
 import adbc_driver_postgresql.dbapi as adbc
@@ -181,9 +182,17 @@ async def require_api_key(api_key: str | None = Security(_api_key_header)) -> No
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def ingest_collision(payload: CollisionPayload):
-    """Tier-0 Ingestion: encola cinematica relativista validada en Redis."""
-    # Backpressure explicita: sin este tope la cola crece hasta agotar la RAM
-    # del broker, porque nada limita el ritmo de POST /collision.
+    """Tier-0 Ingestion: Validates kinematics and enqueues to Redis."""
+    
+    # --- DOMAIN LOGIC FIREWALL ---
+    oracle_decision = PhysicsOracle.evaluate_kinematics(payload)
+    if oracle_decision["status"] == "HARD_STOP":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=oracle_decision["reason"]
+        )
+    # -----------------------------
+
     depth = await redis_client.eval(
         _PUSH_IF_SPACE, 1, QUEUE_NAME, payload.model_dump_json(), str(MAX_QUEUE_DEPTH)
     )

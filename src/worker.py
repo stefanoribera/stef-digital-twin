@@ -1,3 +1,4 @@
+from src.physics_inference_engine import PhysicsOracle
 import asyncio
 import logging
 import math
@@ -43,15 +44,16 @@ class PhysicsWorkerPool:
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    CREATE TABLE IF NOT EXISTS physics_events (
-                        id SERIAL PRIMARY KEY,
-                        pt1 FLOAT, eta1 FLOAT, phi1 FLOAT,
-                        pt2 FLOAT, eta2 FLOAT, phi2 FLOAT,
-                        invariant_mass FLOAT,
-                        is_z_boson BOOLEAN,
-                        processed_at TIMESTAMP DEFAULT NOW()
-                    );
-                """)
+                CREATE TABLE IF NOT EXISTS physics_events (
+                    id SERIAL PRIMARY KEY,
+                    pt1 FLOAT, eta1 FLOAT, phi1 FLOAT,
+                    pt2 FLOAT, eta2 FLOAT, phi2 FLOAT,
+                    invariant_mass FLOAT,
+                    is_z_boson BOOLEAN,
+                    narrative TEXT,
+                    processed_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
                 await conn.commit()
 
     async def _worker_task(self, worker_id: int):
@@ -86,32 +88,35 @@ class PhysicsWorkerPool:
                         2 * pl.col("pt1") * pl.col("pt2") *
                         ((pl.col("eta1") - pl.col("eta2")).cosh() - (pl.col("phi1") - pl.col("phi2")).cos())
                     ).sqrt()
-                ).with_columns(
-                    is_z_boson=pl.col("mass").is_between(85.0, 95.0)
                 )
 
                 mass_val = df["mass"][0]
-                is_z = df["is_z_boson"][0]
 
-                # 4. Ultima defensa: nunca persistir NaN/Infinity en el dataset.
+                # 4. Final Defense: Never persist NaN/Infinity
                 if mass_val is None or not math.isfinite(mass_val):
                     logging.warning(
-                        "[Worker %s] Masa no finita (%r); evento descartado.",
+                        "[Worker %s] Non-finite mass (%r); event discarded.",
                         worker_id, mass_val,
                     )
                     continue
 
+                # --- DOMAIN LOGIC ENRICHMENT ---
+                oracle_decision = PhysicsOracle.evaluate_resonance(mass_val)
+                is_z = oracle_decision["classification"] == "Z_BOSON_CANDIDATE"
+                narrative = oracle_decision["narrative"]
+
                 if is_z:
-                    logging.info(f"[Worker {worker_id}] Z Boson detected! Mass: {mass_val:.2f} GeV")
+                    logging.info(f"[Worker {worker_id}] Z Boson detected! Narrative: {narrative}")
+                # -------------------------------
 
                 # 5. PostgreSQL Storage
                 async with self.pool.connection() as conn:
                     async with conn.cursor() as cur:
                         await cur.execute(
                             """INSERT INTO physics_events
-                            (pt1, eta1, phi1, pt2, eta2, phi2, invariant_mass, is_z_boson)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-                            (data['pt1'], data['eta1'], data['phi1'], data['pt2'], data['eta2'], data['phi2'], float(mass_val), bool(is_z))
+                            (pt1, eta1, phi1, pt2, eta2, phi2, invariant_mass, is_z_boson, narrative)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                            (data['pt1'], data['eta1'], data['phi1'], data['pt2'], data['eta2'], data['phi2'], float(mass_val), bool(is_z), narrative)
                         )
                         await conn.commit()
 

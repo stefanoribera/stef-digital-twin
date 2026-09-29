@@ -1,0 +1,8 @@
+accelerator:
+  max_single_particle_pt_gev: 6800.0
+detector:
+  cms_max_pseudorapidity_eta: 2.4
+particles:
+  z_boson:
+    rest_mass_gev: 91.1876
+    mass_tolerance_gev: 5.0
